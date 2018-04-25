@@ -1,0 +1,64 @@
+---
+title: "Análise sobre dados de acesso de projetos da wikimedia"
+author: "Veruska Santos"
+date: "25 de abril de 2018"
+output: html_document
+---
+
+[introduzir]
+
+
+O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
+
+Aqui, exploramos esses dados. 
+
+```{r setup}
+library(tidyverse)
+library(here)
+library(lubridate)
+theme_set(theme_bw())
+```
+
+```{r ETL}
+buscas = read_csv(here::here("data/search_data_10mil.csv")) #TODO lembrar de usar todos os dados
+```
+
+## Objetivo
+
+1- Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
+2- Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+3- Qual é a nossa taxa de resultados zero no geral? Como isso varia entre os grupos?
+4- A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
+
+
+## Análise dos dados utilizados
+
+[descrever dados]
+
+**num_clicks:**
+**group:**
+**session_start_date:**
+**results:**
+**first_click:**
+**[tamanho da sessão]**
+
+```{r}
+buscas %>% 
+    ggplot(aes(x = num_clicks)) + 
+    geom_histogram(binwidth = 1) +
+    geom_rug(alpha = .3) + 
+    scale_y_log10()
+```
+
+```{r}
+buscas %>% 
+    ggplot(aes(x = group)) + 
+    geom_histogram(binwidth = 1, stat = "count")
+```
+
+```{r}
+buscas %>% 
+    ggplot(aes(x = results)) + 
+    geom_histogram(binwidth = 1) +
+    geom_rug(alpha = .3)
+```

@@ -5,12 +5,11 @@ date: "25 de abril de 2018"
 output: html_document
 ---
 
-[introduzir]
+Este relatório é a resposta do exercício proposto pelo Wikimedia, disponível no GitHub.
 
+## Configurações
 
-O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
-
-Aqui, exploramos esses dados. 
+Abaixo estão as dependências necessárias para reproduzir este relatório.
 
 ```{r setup}
 library(tidyverse)
@@ -19,21 +18,26 @@ library(lubridate)
 theme_set(theme_bw())
 ```
 
+O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
+
 ```{r ETL}
-buscas = read_csv(here::here("data/search_data_10mil.csv")) #TODO lembrar de usar todos os dados
+buscas = read_csv(here::here("data/search_data.csv")) #TODO lembrar de usar todos os dados
 ```
 
 ## Objetivo
 
-1- Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
+Neste relatório, analisaremos os dados busca e navegação de projetos do Wikimedia e tentaremos responder as seguintes perguntas, separadamente:
+
+1- Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
 2- Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
-3- Qual é a nossa taxa de resultados zero no geral? Como isso varia entre os grupos?
+3- Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
 4- A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
 
+Utilizaremos de visualizações e discussões dos resultados para responder às perguntas.
 
-## Análise dos dados utilizados
+## Distribuição dos dados utilizados
 
-[descrever dados]
+Vejamos a definição das variáveis coletadas e como estão distribuidos os dados na amostra disponibilizada.
 
 **num_clicks:**
 **group:**
@@ -44,21 +48,89 @@ buscas = read_csv(here::here("data/search_data_10mil.csv")) #TODO lembrar de usa
 
 ```{r}
 buscas %>% 
-    ggplot(aes(x = num_clicks)) + 
+    ggplot(aes(x = num_clicks, fill = group)) + 
     geom_histogram(binwidth = 1) +
-    geom_rug(alpha = .3) + 
-    scale_y_log10()
+    facet_grid(~ group) +
+    geom_rug(alpha = .7, color = "green")
 ```
 
 ```{r}
 buscas %>% 
-    ggplot(aes(x = group)) + 
+    ggplot(aes(x = group, fill = group)) + 
     geom_histogram(binwidth = 1, stat = "count")
 ```
 
 ```{r}
 buscas %>% 
-    ggplot(aes(x = results)) + 
+    ggplot(aes(x = results, fill = group)) + 
     geom_histogram(binwidth = 1) +
-    geom_rug(alpha = .3)
+    geom_rug(alpha = .3) +
+    facet_grid(~ group)
 ```
+
+
+## Análise dos dados
+
+```{r}
+buscas <- mutate(buscas, date = date(session_start_date))
+```
+
+### 1- Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+
+Para responder esta pergunta, iremos usar as variáveis **num_clicks**, **session_start_date** e **group** e calcularemos a taxa, que é a soma dos cliques do dia dividido pelo total de buscas do referido dia, ou seja, 
+
+**taxa de cliques** = soma dos cliques do dia / total de buscas do dia
+
+A taxa de cliques diária geral varia entre aproximadamente 24% e 37% e é mostrada no gráfico abaixo, onde é possível perceber uma tendência decrescente, entre os dias 01 e 09 de março de 2016. O primeiro dia atingiu o maior valor, mais de 35% de cliques em relação às buscas desse dia. O menor valor ocorreu no penúltimo dia, 07 de março de 2016, e atingiu pouco menos de 25% de cliques.
+
+```{r}
+total_buscas_dia <- buscas %>% 
+    group_by(date) %>% 
+    count(date)
+
+total_cliques <- buscas %>% 
+    group_by(date) %>%
+    summarise(clicks = sum(num_clicks))
+    
+merge_cliques_buscas <- merge(total_cliques, total_buscas_dia)
+
+taxa_cliques_total <- merge_cliques_buscas%>%
+    ggplot(aes(x = date, y = (clicks/n)*100)) + 
+    geom_col(position = "dodge") +
+    labs(x = "Dia", y = "Taxa de cliques (%)", 
+         title = "Taxa de cliques diária geral")
+
+print(taxa_cliques_total)
+```
+
+Mais abaixo mostramos a variação da taxa de cliques por grupo, onde há enorme discrepância. Observe.
+
+```{r}
+
+total_cliques <- buscas %>% 
+    group_by(date, group) %>%
+    summarise(clicks = sum(num_clicks))
+
+merge_cliques_buscas <- merge(total_cliques, total_buscas_dia)
+
+taxa_cliques_grupos <- merge_cliques_buscas %>%
+    ggplot(aes(x = date, y = (clicks/n)*100, fill = group)) + 
+    geom_col(position = "dodge") +
+    labs(x = "Dia", y = "Taxa de cliques (%)", 
+         title = "Taxa de cliques diária, por grupo")
+
+print(taxa_cliques_grupos)
+```
+
+O grupo a apresenta as maiores taxas de cliques em todos os dias analisados e uma tendência decrescente no decorrer dos dias. Já o grupo b, apresenta uma certa relação crescente, apesar dos valores ainda serem mais baixos que os do grupo a.
+
+```{r}
+
+
+```
+
+
+
+
+
+

@@ -124,13 +124,59 @@ print(taxa_cliques_grupos)
 
 O grupo a apresenta as maiores taxas de cliques em todos os dias analisados e uma tendência decrescente no decorrer dos dias. Já o grupo b, apresenta uma certa relação crescente, apesar dos valores ainda serem mais baixos que os do grupo a.
 
-```{r}
+### 2- Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
 
+Para responder esta pergunta, iremos usar as variáveis **results**, **first_click** e **date**.
+
+Como para buscas sem resultados, em geral, não há nenhum clique (há 4 exceções nos dados), removeremos as buscas cujo resultado foi zero e não possui valores registrados para o primeiro clique. Assim, filtraremos e analisaremos apenas as buscas que têm 1 ou mais resultadose valores de primeiro clique registrados.
+
+```{r}
+buscas_filtradas <- buscas %>%
+    filter(results > 0, !is.na(first_click))
+
+```
+
+O filtro acima resultou em 33.187 dados que iremos analisar, sendo, 122 destes, buscas cujo índice do primeiro clique é maior que 100. Essas 122 buscas removeremos do gráfico abixo, para facilitar a visualização, mas em seguida os mostraremos novamente através do boxplot.
+
+```{r}
+buscas_filtradas %>% 
+    filter(first_click <= 100) %>%
+    ggplot(aes(x = first_click)) + 
+    geom_histogram(binwidth = 1) +
+    geom_rug(alpha = .5) + 
+    scale_y_log10() +
+    labs(x = "Posição do resultado no primeiro clique", y = "Ocorrências", 
+         title = "Distribuição dos primeiros cliques dos usuários")
+```
+
+O eixo x do gráfico acima exibe qual foi o primeiro clique do usuário, ou seja, em qual posição o resultado da busca estava. Assim, os usuários tendem, claramente, a clicar no primeiro resultado da busca, depois no segundo e assim, sucessivamente, devido à tendência decrescente exibida no gráfico, o que indica que os algoritmos de rankeamento da plataforma estão adequados. Apesar disso, há poucos ocorrências, menos de 10 por posição, em que o primeiro clique do usuário foi em um resultado posicionado após 25 ou mais respostas. Há ainda uma elevação nos valores, após a metade do intervalo [0, 25] que, seguindo o padrão de configuração das páginas, significa os primeiros resultados da segunda ou terceira página.
+
+Agora, verificaremos a preferência dos resultados por dia.
+
+```{r}
+buscas_filtradas %>% 
+    ggplot(aes(x = factor(date), y = first_click)) + 
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(x = "Data", y = "Posição do resultado no primeiro clique", 
+         title = "Distribuição dos primeiros cliques dos usuários, por dia")
+```
+
+Não há diferença significativa entre os primeiros cliques dos usuários entre os dias, porque os boxplots parecem apresentar as mesmas características. Em todos os dias, os resultados que os usuários clicam primeiro estão, em sua maioria, entre 1 e 3, aproximadamente, sendo o primeiro resultado da busca o valor mediano, confirmando os resultados obtidos no Gráfico x. No primeiro e no sexto dia desses dados há buscas em que os usuários clicaram nos resultados acima da posição 1000, o que dá indicíos de que os usuários são robôs.
+
+### 3- Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+Para responder esta pergunta, iremos usar as variáveis **results**, **group**
+
+```{r}
 
 ```
 
 
+### 4- A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
 
+```{r}
 
+```
 
 

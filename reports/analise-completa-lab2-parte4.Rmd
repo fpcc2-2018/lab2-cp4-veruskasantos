@@ -21,7 +21,7 @@ theme_set(theme_bw())
 O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
 
 ```{r ETL}
-buscas = read_csv(here::here("data/search_data.csv")) #TODO lembrar de usar todos os dados
+buscas = read_csv(here::here("data/search_data_total.csv")) #TODO lembrar de usar todos os dados
 ```
 
 ## Objetivo
@@ -183,15 +183,14 @@ total_sem_resultado <- buscas_sem_resultado %>%
 merge(total_com_resultado, total_sem_resultado) %>%
     ggplot() + 
     geom_col(aes(x = "", y = n_total)) +
-    geom_text(aes(x = "", y = n_total, label=n_total), vjust=1.6, color="white", size=3.5) +
     geom_col(aes(x = "", y = n_vazio), fill = "#41d480") +
-    geom_text(aes(x = "", y = n_vazio, label=n_vazio), vjust=1.6, color="white", size=3.5) +
+    geom_text(aes(x = "", y = n_vazio, label=paste(trunc((n_vazio/n_total)*100), "%")), vjust=1.6, color="white", size=3.5) +
     labs(x = "", y = "Quantidade de buscas", 
          title = "Comparação do total de buscas que retornaram resultado vazio")
 
 ```
 
-O gráfico acima mostra que há 25.127 buscas, de um total de 136234, que retornaram nenhum resultado, ou seja, **18%** de todas as buscas retornaram resultado vazio. Desses resultados vazios, 16902 foram do grupo a, que possuem 92056, enquanto 8225 foram do grupo b, que possuem 44178, como podemos ver logo abaixo. Portanto, **18%** das buscas do grupo a e **19%** do grupo b retornaram resultado vazio.
+O gráfico acima mostra que há 25.127 buscas, de um total de 136234, que retornaram nenhum resultado, ou seja, **19%** de todas as buscas retornaram resultado vazio. Desses resultados vazios, 16902 foram do grupo a, que possuem 92056, enquanto 8225 foram do grupo b, que possuem 44178, como podemos ver logo abaixo. Portanto, **18%** das buscas do grupo a e **20%** do grupo b retornaram resultado vazio.
 
 ```{r}
 total_com_resultado <- buscas %>% 
@@ -204,23 +203,20 @@ total_sem_resultado <- buscas_sem_resultado %>%
 
 merge(total_com_resultado, total_sem_resultado) %>%
     ggplot() + 
-    geom_col(aes(x = group, y = n_total, fill = group)) +
-    geom_text(aes(x = group, y = n_total, label=n_total), vjust=1.6, color="white", size=3.5) +
+    geom_col(aes(x = group, y = n_total)) +
     geom_col(aes(x = group, y = n_vazio), fill = "#41d480") +
-    geom_text(aes(x = group, y = n_vazio, label=n_vazio), vjust=1.6, color="white", size=3.5) +
-    labs(x = "", y = "Quantidade de buscas", fill = "Grupo",
-         title = "Comparação do total de buscas que retornaram resultado vazio")
+    geom_text(aes(x = group, y = n_vazio, label=paste(trunc((n_vazio/n_total)*100), "%")), vjust=1.6, color="white", size=3.5) +
+    labs(x = "Grupo", y = "Quantidade de buscas",
+         title = "Comparação do total de buscas que retornaram resultado vazio, por grupo")
     
-
 ```
 
 Apesar do grupo b ter menos dados, a taxa de resultados vazio foi ligeiramente maior em relação ao grupo a. 
-Será que se a distribuição dos dados coletados fossem igual, as buscas do grupo b teriam bem mais resultados vazios do que o grupo a? 
+Será que, se os dados tivessem igualmente distribuidos, as buscas do grupo b teriam bem mais resultados vazios do que o grupo a? 
+
+Não sabemos responder!
+
+Vamos para a quarta e última pergunta.
 
 ### 4- A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
-
-```{r}
-
-```
-
 

@@ -151,27 +151,71 @@ buscas_filtradas %>%
 
 O eixo x do gráfico acima exibe qual foi o primeiro clique do usuário, ou seja, em qual posição o resultado da busca estava. Assim, os usuários tendem, claramente, a clicar no primeiro resultado da busca, depois no segundo e assim, sucessivamente, devido à tendência decrescente exibida no gráfico, o que indica que os algoritmos de rankeamento da plataforma estão adequados. Apesar disso, há poucos ocorrências, menos de 10 por posição, em que o primeiro clique do usuário foi em um resultado posicionado após 25 ou mais respostas. Há ainda uma elevação nos valores, após a metade do intervalo [0, 25] que, seguindo o padrão de configuração das páginas, significa os primeiros resultados da segunda ou terceira página.
 
-Agora, verificaremos a preferência dos resultados por dia.
+Agora, verificaremos a preferência dos resultados por dia. O gráfico abaixo exibe os boxplots, representados pela cor verde, para cada dia. Os pontos são as buscas e o eixo y representa qual a posição do primeiro resultado que o usuário clicou.
 
 ```{r}
 buscas_filtradas %>% 
     ggplot(aes(x = factor(date), y = first_click)) + 
-    geom_boxplot() +
+    geom_boxplot(outlier.shape=NA, color = "#41d480", fill = "#41d480") +
+    geom_jitter(alpha = .1, width = .3) +
     scale_y_log10() +
     labs(x = "Data", y = "Posição do resultado no primeiro clique", 
          title = "Distribuição dos primeiros cliques dos usuários, por dia")
 ```
 
-Não há diferença significativa entre os primeiros cliques dos usuários entre os dias, porque os boxplots parecem apresentar as mesmas características. Em todos os dias, os resultados que os usuários clicam primeiro estão, em sua maioria, entre 1 e 3, aproximadamente, sendo o primeiro resultado da busca o valor mediano, confirmando os resultados obtidos no Gráfico x. No primeiro e no sexto dia desses dados há buscas em que os usuários clicaram nos resultados acima da posição 1000, o que dá indicíos de que os usuários são robôs.
+Em geral, não há diferença significativa entre os primeiros cliques dos usuários entre os dias, porque os boxplots (retângulos verdes) parecem apresentar as mesmas características. Exceto no dia 04, onde houve mais cliques nos resultados de índices altos, ou seja, há mais pontos, que representam as buscas, na parte superior do gráfico. Em todos os dias, os resultados que os usuários clicam primeiro estão, em sua maioria, entre 1 e 3, aproximadamente, sendo o primeiro resultado da busca o valor mediano, confirmando os resultados obtidos no Gráfico x. No primeiro e no sexto dia desses dados há buscas em que os usuários clicaram nos resultados acima da posição 1000, o que dá indicíos de que os usuários são robôs.
 
 ### 3- Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
 
-Para responder esta pergunta, iremos usar as variáveis **results**, **group**
+Para responder esta pergunta, iremos usar as variáveis **results**, **group**.
+Diferente da pergunta anterior, onde removemos as buscas cujo resultado era zero, agora iremos analisar a sua frequência em relação ao total de buscas.
 
 ```{r}
+buscas_sem_resultado <- buscas %>%
+    filter(results == 0)
+
+total_com_resultado <- buscas %>% 
+    summarise(n_total = n())
+
+total_sem_resultado <- buscas_sem_resultado %>% 
+    summarise(n_vazio = n())
+
+merge(total_com_resultado, total_sem_resultado) %>%
+    ggplot() + 
+    geom_col(aes(x = "", y = n_total)) +
+    geom_text(aes(x = "", y = n_total, label=n_total), vjust=1.6, color="white", size=3.5) +
+    geom_col(aes(x = "", y = n_vazio), fill = "#41d480") +
+    geom_text(aes(x = "", y = n_vazio, label=n_vazio), vjust=1.6, color="white", size=3.5) +
+    labs(x = "", y = "Quantidade de buscas", 
+         title = "Comparação do total de buscas que retornaram resultado vazio")
 
 ```
 
+O gráfico acima mostra que há 25.127 buscas, de um total de 136234, que retornaram nenhum resultado, ou seja, **18%** de todas as buscas retornaram resultado vazio. Desses resultados vazios, 16902 foram do grupo a, que possuem 92056, enquanto 8225 foram do grupo b, que possuem 44178, como podemos ver logo abaixo. Portanto, **18%** das buscas do grupo a e **19%** do grupo b retornaram resultado vazio.
+
+```{r}
+total_com_resultado <- buscas %>% 
+    group_by(group) %>%
+    summarise(n_total = n())
+    
+total_sem_resultado <- buscas_sem_resultado %>% 
+    group_by(group) %>%
+    summarise(n_vazio = n())
+
+merge(total_com_resultado, total_sem_resultado) %>%
+    ggplot() + 
+    geom_col(aes(x = group, y = n_total, fill = group)) +
+    geom_text(aes(x = group, y = n_total, label=n_total), vjust=1.6, color="white", size=3.5) +
+    geom_col(aes(x = group, y = n_vazio), fill = "#41d480") +
+    geom_text(aes(x = group, y = n_vazio, label=n_vazio), vjust=1.6, color="white", size=3.5) +
+    labs(x = "", y = "Quantidade de buscas", fill = "Grupo",
+         title = "Comparação do total de buscas que retornaram resultado vazio")
+    
+
+```
+
+Apesar do grupo b ter menos dados, a taxa de resultados vazio foi ligeiramente maior em relação ao grupo a. 
+Será que se a distribuição dos dados coletados fossem igual, as buscas do grupo b teriam bem mais resultados vazios do que o grupo a? 
 
 ### 4- A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
 

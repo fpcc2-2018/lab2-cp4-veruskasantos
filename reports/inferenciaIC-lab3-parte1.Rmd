@@ -25,6 +25,8 @@ Abaixo estão as dependências necessárias para reproduzir este relatório.
 library(tidyverse)
 library(here)
 library(lubridate)
+library(boot) # <-- Para bootstrap!
+library(resample)
 ```
 
 O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
@@ -71,9 +73,7 @@ A taxa de cliques diária geral varia entre aproximadamente 24% e 36% e é mostr
 ```{r}
 total_cliques <- buscas_sem_dia_8 %>% 
     group_by(date) %>%
-    summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
-    pull(taxa) %>%
-    mean()
+    summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100)
 
 taxa_cliques_total <- total_cliques%>%
     ggplot(aes(x = date, y = taxa)) + 
@@ -86,8 +86,7 @@ print(taxa_cliques_total)
 ```
 
 ```{r}
-amostra <- buscas %>%
-    #pull(news) #TODO erro nomes de colunas duplicadas 
+amostra <- buscas 
 
 media_taxa_cliques_amostra <- function(dados) {
     media <- dados %>% 
@@ -99,12 +98,12 @@ media_taxa_cliques_amostra <- function(dados) {
     return(media)
 } 
 
-exp_com_bootstrap(amostra)
+#exp_com_bootstrap(amostra)
 
-repeticoes = 1 #4000
+repeticoes = 2000
 
 exp_com_bootstrap <- function(x){
-  boot_x <- sample(x,
+  boot_x <- sample_n(x,
                    size = NROW(x), 
                    replace = TRUE) # aqui é o bootstrap
   
@@ -114,13 +113,41 @@ exp_com_bootstrap <- function(x){
 # Agora o input das reamostragens é a amostra!
 experimentos = data_frame(i = 1:repeticoes) %>% 
     rowwise() %>% 
-    mutate(media_exp = exp_com_bootstrap(amostra)) %>%  # <- Aqui!
+    mutate(media_taxa_exp = exp_com_bootstrap(amostra)) %>%  # <- Aqui!
     ungroup() 
 
-ggplot(experimentos, aes(x = media_exp)) + 
-  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white")
+ggplot(experimentos, aes(x = media_taxa_exp)) + 
+  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white") +
+    scale_y_log10()
+
 summary(experimentos)
 ```
+
+
+#com biblioteca boot
+
+```{r}
+fun.boot <- function(dados, i) {
+    media <- dados %>% 
+            slice(i) %>%
+            group_by(date) %>%
+            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
+            pull(taxa) %>%
+            mean()
+    
+    return(media)
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = fun.boot, 
+                 R = 1000)
+plot(res.boot)
+boot.ci(boot.out = res.boot, conf = 0.95, type = "basic")
+boot.ci(boot.out = res.boot, conf = 0.95, type = "bca")
+boot.ci(boot.out = res.boot, conf = 0.95, type = "perc")
+```
+
+
 
 Mais abaixo, no Gráfico 4.1.2, mostramos a variação da taxa de cliques por grupo, onde há discrepância. Observe.
 

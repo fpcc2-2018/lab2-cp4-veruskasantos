@@ -1,4 +1,7 @@
-Link da resposta no RPubs: http://rpubs.com/veruskasantos/385180
+Links das respostas no RPubs:
+
+`lab3-cp1`: http://rpubs.com/veruskasantos/inferencia
+`lab2-cp4`: http://rpubs.com/veruskasantos/385180
 
 # Sessões, buscas e navegação na wikimedia
 

@@ -1,15 +1,15 @@
 ---
-title: "Inferência"
+title: "Analisando amostras de dados com intervalos de confiança"
 author: "Veruska Santos"
-date: "15 de maio de 2018"
+date: "17 de maio de 2018"
 output: html_document
 ---
 
-Este relatório é a resposta do exercício proposto pelo Wikimedia, disponível no GitHub¹.
+Este relatório é uma versão editada da resposta do exercício proposto pelo Wikimedia, disponível no GitHub¹.
 
 ## 1. Objetivo
 
-Neste relatório, analisaremos os dados busca e navegação de projetos do Wikimedia e tentaremos responder as seguintes perguntas, separadamente:
+Neste relatório, analisaremos os dados de busca e navegação de projetos do Wikimedia e tentaremos responder as seguintes perguntas, separadamente:
 
 1. Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
 2. Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
@@ -17,7 +17,18 @@ Neste relatório, analisaremos os dados busca e navegação de projetos do Wikim
 
 Como a Wikimedia disponibilizou apenas uma amostra dos dados, ou seja, um conjunto de buscas de alguns usuários, utilizaremos de visualizações e análises estatísticas para inferir resultados da população inteira, isto é, de todos os usuários da Wikimedia, a partir dos resultados obtidos da amostra disponibilizada.
 
-## 2. Configurações
+## 2. Background
+
+Iremos utilizar a técnica de bootstrap, para inferir resultados sobre o conjuntos de todos os usuários da wikimedia, com 95% de confiança. O **bootstrap** consiste em, dado uma amostra de dados de tamanho n, extrair várias amostras dessa amostra, também com tamanho n, ou seja, com repetição dos dados. Então, para cada amostra extraída, a mesma estatística desejada é calculada, para verificar como é a sua variação.
+
+Após o bootstrapping, o **intervalo de confiança** pode ser gerado, que nos dá o intervalo onde a nossa estatística desejada está, com 95% de confiança, no nosso caso. Quando se está analisando relação entre dois grupos, por exemplo, os valores mínimo e máximo do intervalo têm um significado:
+
+* se ambos os valores são positivos significa que o primeiro grupo analisado tem uma relação **maior** que o segundo grupo. Ex: [20, 29];
+* se os valores são negativos significa que o primeiro grupo analisado tem uma relação **menor** que o segundo grupo. Ex: [-8, -1];
+* se os valores são positivos e negativos e o intervalo é muito grande, então não há relação entre os grupos. Ex: [-59, 71];
+* caso contrário, não há diferença significativa entre os grupos analisados. Ex: [-0.02, 0.1].
+
+## 3. Configurações
 
 Abaixo estão as dependências necessárias para reproduzir este relatório.
 
@@ -25,8 +36,7 @@ Abaixo estão as dependências necessárias para reproduzir este relatório.
 library(tidyverse)
 library(here)
 library(lubridate)
-library(boot) # <-- Para bootstrap!
-library(resample)
+library(boot)
 ```
 
 O objeto principal da análise são as buscas e a navegação depois da busca. Criamos esses dados a partir dos dados originais da wikimedia em `/data/search_data.csv`. 
@@ -42,7 +52,7 @@ buscas <- mutate(buscas, date = date(session_start_date))
 ```
 
 
-## 3. Dados
+## 4. Dados
 
 * **num_clicks:** representa a quantidade total de vezes que o usuário clicou nos resultados de cada busca. Os valores variam entre 0 e 36 e a distribuição é decrescente, ou seja, há muitas buscas em que os usuários clicaram em poucos ou nenhum resultado. 
 * **group:** representa o grupo em que cada sessão está, logo, todas as buscas de uma sessão pertencem ao mesmo grupo. Os valores podem ser a ou b, porém a amostra está desbalanceada em relação aos grupos, pois possui mais buscas pertencentes ao grupo a do que ao grupo b.
@@ -51,11 +61,11 @@ buscas <- mutate(buscas, date = date(session_start_date))
 * **first_click:** representa qual foi o resultado que o usuário clicou primeiro, de cada busca, ou seja, a posição do primeiro resultado clicado. Os valores podem ser entre 1 e 4103 ou NA (sem valor), porém estão concentrados entre 0 e 20, sendo a relação decrescente, ou seja, os usuários tendem a clicar nos primeiros resultados.
 * **session_start_timestamp:** representa o tempo, em milissegundos, do começo da sessão, ou seja, é o tempo registrado no começo da primeira busca. Para analisar sua distribuição, particionamos a hora em turnos e mostramos no gráfico abaixo, onde percebemos que as sessões começam mais no turno da tarde e menos de madrugada.
 
-## 4. Análise dos dados
+## 5. Análise dos dados
 
 Agora, utilizaremos de visualizações e inferências para analisar os dados e responder as perguntas já descritas.
 
-### 4.1 Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+### 5.1 Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
 
 Para responder esta pergunta, iremos usar as variáveis **num_clicks**, **date** e **group** e calcularemos a taxa, que é a soma dos cliques do dia dividido pelo total de buscas do referido dia, ou seja, 
 
@@ -68,7 +78,7 @@ buscas_sem_dia_8 <- buscas %>%
     filter(date != "2016-03-08")
 ```
 
-A taxa de cliques diária geral varia entre aproximadamente 24% e 36% e é mostrada no gráfico abaixo, onde é possível perceber uma relação decrescente. O primeiro dia atingiu o maior valor, aproximadamente 35% de cliques em relação às buscas desse dia. O menor valor ocorreu no dia 07 de março de 2016, e atingiu pouco menos de 25% de cliques.
+No laboratório anterior², conseguimos os seguintes resultados mostrados nos gráficos 5.1.1 e 5.1.2, respectivamente: a taxa de cliques diária geral varia entre aproximadamente 24% e 36% e, comparando por grupos, o grupo *a* apresenta as maiores taxas de cliques em todos os dias analisados em relação ao grupo *b*.
 
 ```{r}
 total_cliques <- buscas_sem_dia_8 %>% 
@@ -80,78 +90,16 @@ taxa_cliques_total <- total_cliques%>%
     geom_col(position = "dodge") +
     geom_text(aes(x = date, y = taxa, label=paste(trunc(taxa), "%")), vjust=1.6, color="white", size=3.5) +
     labs(x = "Dia", y = "Taxa de cliques (%)", 
-         title = "Gráfico 4.1.1: Taxa de cliques diária geral")
+         title = "Gráfico 5.1.1: Taxa de cliques diária geral")
 
 print(taxa_cliques_total)
 ```
 
 ```{r}
-amostra <- buscas 
+total_buscas_dia <- buscas_sem_dia_8 %>% 
+    group_by(date) %>% 
+    count(date)
 
-media_taxa_cliques_amostra <- function(dados) {
-    media <- dados %>% 
-            group_by(date) %>%
-            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
-            pull(taxa) %>%
-            mean()
-    
-    return(media)
-} 
-
-#exp_com_bootstrap(amostra)
-
-repeticoes = 2000
-
-exp_com_bootstrap <- function(x){
-  boot_x <- sample_n(x,
-                   size = NROW(x), 
-                   replace = TRUE) # aqui é o bootstrap
-  
-  return(media_taxa_cliques_amostra(boot_x))
-}
-
-# Agora o input das reamostragens é a amostra!
-experimentos = data_frame(i = 1:repeticoes) %>% 
-    rowwise() %>% 
-    mutate(media_taxa_exp = exp_com_bootstrap(amostra)) %>%  # <- Aqui!
-    ungroup() 
-
-ggplot(experimentos, aes(x = media_taxa_exp)) + 
-  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white") +
-    scale_y_log10()
-
-summary(experimentos)
-```
-
-
-#com biblioteca boot
-
-```{r}
-fun.boot <- function(dados, i) {
-    media <- dados %>% 
-            slice(i) %>%
-            group_by(date) %>%
-            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
-            pull(taxa) %>%
-            mean()
-    
-    return(media)
-}
-
-res.boot <- boot(data = amostra, 
-                 statistic = fun.boot, 
-                 R = 1000)
-plot(res.boot)
-boot.ci(boot.out = res.boot, conf = 0.95, type = "basic")
-boot.ci(boot.out = res.boot, conf = 0.95, type = "bca")
-boot.ci(boot.out = res.boot, conf = 0.95, type = "perc")
-```
-
-
-
-Mais abaixo, no Gráfico 4.1.2, mostramos a variação da taxa de cliques por grupo, onde há discrepância. Observe.
-
-```{r}
 total_cliques <- buscas_sem_dia_8 %>% 
     group_by(date, group) %>%
     summarise(clicks = sum(num_clicks))
@@ -162,14 +110,111 @@ taxa_cliques_grupos <- merge_cliques_buscas %>%
     ggplot(aes(x = date, y = (clicks/n)*100, fill = group)) + 
     geom_col(position = "dodge") +
     labs(x = "Dia", y = "Taxa de cliques (%)", fill = "Grupo",
-         title = "Gráfico 4.1.2: Taxa de cliques diária, por grupo")
+         title = "Gráfico 5.1.2: Taxa de cliques diária, por grupo")
 
 print(taxa_cliques_grupos)
 ```
 
-O grupo a apresenta as maiores taxas de cliques em todos os dias analisados e uma tendência decrescente no decorrer dos dias. Já o grupo b, apresenta uma certa relação crescente, apesar dos valores ainda serem mais baixos do que os do grupo a, por conta do desbalanceamento da quantidade de buscas de cada grupo, também discutido na sessão 3 anterior.
+Agora, iremos utilizar a técnica de bootstrap e os intervalos de confiança.
 
-### 4.2 Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+```{r}
+amostra <- buscas_sem_dia_8
+
+calcula_taxa_cliques <- function(dados, indices) {
+    media_taxa_cliques <- dados %>% 
+            slice(indices) %>%  #<- reamostragem
+            group_by(date) %>%
+            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
+            pull(taxa) %>%
+            mean()
+    
+    return(media_taxa_cliques)
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_taxa_cliques, 
+                 R = 2000)  #<- repetição
+
+plot(res.boot)
+
+calcula_ci <- function(distribuicao) { #<- função para calcular intervalo de confiança
+    return(boot.ci(boot.out = distribuicao, conf = 0.95, type = "basic"))
+}
+
+calcula_ci(res.boot)
+```
+
+Dado o resultado acima, podemos inferir que, a partir desta amostra de dados, a média da taxa geral diária de cliques está entre 29% e 30%, com 95% de confiança.
+
+Abaixo, analisaremos a taxa geral diária de cliques, por grupo.
+
+```{r}
+calcula_taxa_cliques <- function(dados, indices) {
+    media_taxa_cliques <- dados %>% 
+            slice(indices) %>%
+            group_by(group, date) %>%
+            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
+            summarise(media = mean(taxa)) %>%
+            pull(media)
+    
+    return(media_taxa_cliques[1] - media_taxa_cliques[2])
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_taxa_cliques, 
+                 R = 2000)
+plot(res.boot)
+calcula_ci(res.boot)
+```
+Como o intervalo de confiança, acima, deu positivo para a diferença da taxa de cliques entre os grupos *a* e *b*, significa que podemos inferir que, a taxa de cliques diária, para o grupo *a*, é sempre maior que a taxa de cliques para o grupo *b*.
+
+### 5.1.1 Como a taxa de cliques geral diária varia entre os grupos A/A?
+
+Uma variação da análise anterior é a análise de como a taxa de cliques geral diária varia entre o grupo *a*, ou seja, iremos comparar metade do grupo a (escolhida aleatoriamente) com a outra metade do próprio grupo *a*.
+
+```{r}
+amostra <- buscas %>%
+            filter(group == "a")
+
+tamanho_amostra <- amostra %>%
+                    summarise(tamanho = n()) %>%
+                    pull(tamanho)
+
+calcula_taxa_cliques <- function(dados, indices) {
+    
+    dados <- dados %>%
+        slice(indices)
+    
+    amostra1 <- dados %>%
+                slice(1 : (tamanho_amostra/2)) %>%   #<- primeira metade dos dados do grupo a
+                mutate(grupo = "a1")
+    
+    amostra2 <- dados %>%
+                slice(tamanho_amostra/2 + 1: tamanho_amostra) %>%  #<- segunda metade dos dados do grupo a
+                mutate(grupo = "a2")
+    
+    nova_amostra <- bind_rows(amostra1, amostra2)
+    
+    media_taxa_cliques <- nova_amostra %>% 
+            group_by(grupo, date) %>%
+            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
+            summarise(media = mean(taxa)) %>%
+            pull(media)
+    
+    return(media_taxa_cliques[1] - media_taxa_cliques[2])
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_taxa_cliques, 
+                 R = 2000)
+plot(res.boot)
+calcula_ci(res.boot)
+
+```
+
+Com o resultado acima, confirmamos o esperado: não há diferença na taxa de cliques diárias dentro do grupo *a*, porque o valor 0 está dentro do intervalo de confiança, como explicado na seção 2.
+
+### 5.2 Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
 
 Para responder esta pergunta, iremos usar as variáveis **results**, **first_click** e **date**.
 
@@ -178,10 +223,13 @@ Como para buscas sem resultados, em geral, não há nenhum clique (há 4 exceç�
 ```{r}
 buscas_com_resultado <- buscas %>%
     filter(results > 0, !is.na(first_click))
-
 ```
 
-O filtro acima resultou em 33.187 dados que iremos analisar, sendo, 122 destes, buscas cujo índice do primeiro clique é maior que 100. Essas 122 buscas removeremos do gráfico abaixo, para facilitar a visualização da maioria dos dados, mas em seguida, no Gráfico 4.2.2, os mostraremos novamente através do boxplot.
+O filtro acima resultou em 33.187 dados que iremos analisar, sendo, 122 destes, buscas cujo índice do primeiro clique é maior que 100. Essas 122 buscas removeremos do gráfico abaixo, para facilitar a visualização da maioria dos dados, mas em seguida, no Gráfico 5.2.2, os mostraremos novamente através do boxplot.
+
+No lab anterior, conseguimos os seguintes resultados mostrados nos gráficos 5.2.1 e 5.2.2, respectivamente.
+Os usuários tendem, claramente, a clicar no primeiro resultado da busca, depois no segundo e assim, sucessivamente, devido à tendência decrescente exibida no gráfico, o que indica que os algoritmos de rankeamento da plataforma estão adequados. 
+Além disso, não há diferença significativa entre os primeiros cliques dos usuários entre os dias, porque os boxplots (retângulos verdes) parecem apresentar as mesmas características. Exceto no dia 04 (sexta-feira), onde houve mais cliques nos resultados de índices altos, ou seja, há mais pontos, que representam as buscas, na parte superior do gráfico.
 
 ```{r warning=FALSE}
 buscas_com_resultado %>% 
@@ -191,12 +239,8 @@ buscas_com_resultado %>%
     geom_rug(alpha = .7, color = "green") + 
     scale_y_log10() +
     labs(x = "Posição do resultado no primeiro clique", y = "Ocorrências", 
-         title = "Gráfico 4.2.1: Distribuição dos primeiros cliques dos usuários")
+         title = "Gráfico 5.2.1: Distribuição dos primeiros cliques dos usuários")
 ```
-
-O eixo x do gráfico acima exibe qual foi o primeiro clique do usuário, ou seja, em qual posição o resultado da busca estava. Assim, os usuários tendem, claramente, a clicar no primeiro resultado da busca, depois no segundo e assim, sucessivamente, devido à tendência decrescente exibida no gráfico, o que indica que os algoritmos de rankeamento da plataforma estão adequados. Apesar disso, há poucas ocorrências, menos de 10 por posição, em que o primeiro clique do usuário foi em um resultado posicionado após 25 ou mais respostas. Há ainda uma elevação nos valores, após a metade do intervalo [0, 25] que, seguindo o padrão de configuração das páginas, significa possivelmente os primeiros resultados da segunda página.
-
-Agora, verificaremos a preferência dos resultados por dia. O gráfico abaixo exibe os boxplots, representados pela cor verde, para cada dia. Os pontos são as buscas e o eixo y representa qual a posição do primeiro resultado que o usuário clicou.
 
 ```{r}
 buscas_com_resultado %>% 
@@ -205,44 +249,157 @@ buscas_com_resultado %>%
     geom_jitter(alpha = .1, width = .3) +
     scale_y_log10() +
     labs(x = "Data", y = "Posição do resultado no primeiro clique", 
-         title = "Gráfico 4.2.2: Distribuição dos primeiros cliques dos usuários, por dia")
+         title = "Gráfico 5.2.2: Distribuição dos primeiros cliques dos usuários, por dia")
 ```
 
-Em geral, não há diferença significativa entre os primeiros cliques dos usuários entre os dias, porque os boxplots (retângulos verdes) parecem apresentar as mesmas características. Exceto no dia 04, onde houve mais cliques nos resultados de índices altos, ou seja, há mais pontos, que representam as buscas, na parte superior do gráfico. Em todos os dias, os resultados que os usuários clicam primeiro estão, em sua maioria, entre 1 e 3, aproximadamente, sendo o primeiro resultado da busca o valor mediano, confirmando os resultados obtidos no Gráfico 4.2.1. No primeiro e no sexto dia desses dados há buscas em que os usuários clicaram nos resultados acima da posição 1000, o que dá indicíos de que os usuários eram robôs.
+Faremos novamente reamostragens para inferir resultados, com 95% de confiança, sobre o conjunto de todos os usuários da Wikimedia.
 
-### 4.3 Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+```{r}
+amostra <- buscas_com_resultado
+
+calcula_primeiro_clique <- function(dados, indices) {
+    media_primeiro_clique <- dados %>% 
+            slice(indices) %>%
+            pull(first_click) %>%
+            mean()
+    
+    return(media_primeiro_clique)
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_primeiro_clique, 
+                 R = 2000)
+plot(res.boot)
+calcula_ci(res.boot)
+```
+
+Calculamos a média dos primeiros cliques do usuário e encontramos um intervalo de confiança entre 3 e 5, com 95% de confiança, ou seja, inferimos que os primeiros cliques de todos os usuários são nos primeiros resultados, porque a média deu baixa.
+
+Para ter mais clareza, vejamos a mediana dos primeiros cliques, que é sempre igual a 1, e, portanto, não há intervalo de confiança.
+
+```{r}
+calcula_primeiro_clique <- function(dados, indices) {
+    mediana_primeiro_clique <- dados %>% 
+            slice(indices) %>%
+            pull(first_click) %>%
+            median()
+    
+    return(mediana_primeiro_clique)
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_primeiro_clique, 
+                 R = 2000)
+plot(res.boot)
+calcula_ci(res.boot)
+```
+
+Agora, verificaremos a preferência dos resultados por dia da semana. Para isso, adicionaremos uma coluna **day**, nos dados, que representa o dia da semana em que a busca foi realizada.
+
+```{r}
+buscas_com_resultado <- mutate(buscas_com_resultado, day = strftime(date, '%A'))
+```
+
+```{r}
+set.seed(1)
+
+gera_amostra <- function(dia) {
+    amostra <- buscas_com_resultado %>%
+                    filter(day == dia)
+    return(amostra)
+}
+
+amostra_domingo <- gera_amostra("domingo")
+amostra_segunda <- gera_amostra("segunda-feira")
+amostra_terca <- gera_amostra("terça-feira")
+amostra_quarta <- gera_amostra("quarta-feira")
+amostra_quinta <- gera_amostra("quinta-feira")
+amostra_sexta <- gera_amostra("sexta-feira")
+amostra_sabado <- gera_amostra("sábado")
+
+calcula_primeiro_clique <- function(dados, indices) {
+    media_primeiro_clique <- dados %>% 
+            slice(indices) %>%
+            pull(first_click) %>%
+            mean()
+    
+    return(media_primeiro_clique)
+}
+
+calcula_distribuicao <- function(amostra) {
+    distribuicao <- boot(data = amostra, 
+                 statistic = calcula_primeiro_clique, 
+                 R = 2000)
+    
+    return(distribuicao)
+}
+
+distribuicao_domingo <- calcula_distribuicao(amostra_domingo)
+distribuicao_segunda <- calcula_distribuicao(amostra_segunda)
+distribuicao_terca <- calcula_distribuicao(amostra_terca)
+distribuicao_quarta <- calcula_distribuicao(amostra_quarta)
+distribuicao_quinta <- calcula_distribuicao(amostra_quinta)
+distribuicao_sexta <- calcula_distribuicao(amostra_sexta)
+distribuicao_sabado <- calcula_distribuicao(amostra_sabado)
+
+ci_domingo <- calcula_ci(distribuicao_domingo)
+ci_segunda <- calcula_ci(distribuicao_segunda)
+ci_terca <- calcula_ci(distribuicao_terca)
+ci_quarta <- calcula_ci(distribuicao_quarta)
+ci_quinta <- calcula_ci(distribuicao_quinta)
+ci_sexta <- calcula_ci(distribuicao_sexta)
+ci_sabado <- calcula_ci(distribuicao_sabado)
+
+df = data.frame(rbind(ci_domingo, 
+                      ci_segunda,
+                      ci_terca,
+                      ci_quarta,
+                      ci_quinta,
+                      ci_sexta,
+                      ci_sabado))
+df$medida = row.names(df)
+
+df %>% 
+  ggplot(aes(x = medida, ymin = substr(df$basic, 25, 28), ymax = substr(df$basic, 43, 46))) + 
+  geom_errorbar(width = .2)
+
+```
+
+Observando o gráfico acima, verificamos os intervalos de confiança, por dia da semana, ou seja, a média dos primeiros cliques dos usuários, que tende a ser nos primeiros resultados, pois o valor máximo, mostrado no eixo y, é 8.5.
+
+### 5.3 Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
 
 Para responder esta pergunta, iremos usar as variáveis **results** e **group**.
 Diferente da pergunta anterior, onde removemos as buscas cujo resultado era zero, agora iremos analisar a sua frequência em relação ao total de buscas.
 
+No lab anterior, conseguimos os seguintes resultados, exibidos nos próximos dois gráficos.
+**18%** de todas as buscas retornaram resultado vazio. Analisando separadamente, também **18%** das buscas do grupo *a* e **18%** do grupo *b* retornaram resultado vazio.
+
 ```{r}
-buscas_sem_resultado <- buscas %>%
-    filter(results == 0)
+total_sem_resultado <- buscas %>%
+    filter(results == 0) %>% 
+    summarise(n_vazio = n())
 
 total_com_resultado <- buscas %>% 
     summarise(n_total = n())
 
-total_sem_resultado <- buscas_sem_resultado %>% 
-    summarise(n_vazio = n())
-
 merge(total_com_resultado, total_sem_resultado) %>%
     ggplot() + 
-    geom_col(aes(x = "", y = n_total)) +
-    geom_col(aes(x = "", y = n_vazio), fill = "#41d480") +
+    geom_col(aes(x = "", y = n_total), width = 0.2) +
+    geom_col(aes(x = "", y = n_vazio), fill = "#41d480", width = 0.2) +
     geom_text(aes(x = "", y = n_vazio, label=paste(trunc((n_vazio/n_total)*100), "%")), vjust=1.6, color="white", size=3.5) +
     labs(x = "", y = "Quantidade de buscas", 
-         title = "Gráfico 4.3.1: Comparação do total de buscas que retornaram resultado vazio")
+         title = "Gráfico 5.3.1: Comparação do total de buscas que retornaram resultado vazio")
 
 ```
-
-O gráfico acima mostra que há 25.127 buscas, de um total de 136234, que retornaram nenhum resultado, ou seja, **18%** de todas as buscas retornaram resultado vazio. Desses resultados vazios, 16902 foram do grupo a, que possuem 92056 buscas, enquanto 8225 foram do grupo b, que possuem 44178, como podemos ver logo abaixo, no Gráfico 4.3.2. Portanto, **18%** das buscas do grupo a e também **18%** do grupo b retornaram resultado vazio.
 
 ```{r}
 total_com_resultado <- buscas %>% 
     group_by(group) %>%
     summarise(n_total = n())
     
-total_sem_resultado <- buscas_sem_resultado %>% 
+total_sem_resultado <- buscas %>% 
+    filter(results == 0) %>%
     group_by(group) %>%
     summarise(n_vazio = n())
 
@@ -252,24 +409,83 @@ merge(total_com_resultado, total_sem_resultado) %>%
     geom_col(aes(x = group, y = n_vazio), fill = "#41d480") +
     geom_text(aes(x = group, y = n_vazio, label=paste(trunc((n_vazio/n_total)*100), "%")), vjust=1.6, color="white", size=3.5) +
     labs(x = "Grupo", y = "Quantidade de buscas",
-         title = "Gráfico 4.3.2: Comparação dos resultados vazios, por grupo")
+         title = "Gráfico 5.3.2: Comparação dos resultados vazios, por grupo")
     
 ```
 
-Apesar do grupo b ter menos dados, a taxa de resultados vazio foi igual ao grupo a. 
-Será que, se os dados tivessem igualmente distribuidos, as buscas do grupo b teriam bem mais resultados vazios do que o grupo a? 
+Segue, abaixo, as análises com bootstrap.
 
-Não sabemos responder!
+```{r}
+amostra <- buscas
+
+calcula_taxa_resultados <- function(dados, indices) {
+    dados <- dados %>%
+            slice(indices)
+    
+    total_sem_resultado <- dados %>%
+                            filter(results == 0) %>%
+                            summarise(total_buscas_vazias = n()) %>%
+                            pull(total_buscas_vazias)
+
+    total_de_buscas <- dados %>% 
+                        summarise(total_buscas = n()) %>%
+                        pull(total_buscas)
+
+    taxa_buscas_sem_resultado <- total_sem_resultado / total_de_buscas
+    
+    return(taxa_buscas_sem_resultado)
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_taxa_resultados, 
+                 R = 2000)
+plot(res.boot)
+
+calcula_ci(res.boot)
+```
+
+Os resultados acima nos mostram que, no geral, a taxa de resultados zero é 18%, com um intervalo de confiança de 95% muito pequeno.
+
+```{r}
+amostra <- buscas
+
+calcula_taxa_resultados <- function(dados, indices) {
+    dados <- dados %>%
+            slice(indices)
+    
+    buscas_sem_resultado <- dados %>%
+                            filter(results == 0) %>%
+                            group_by(group) %>%
+                            summarise(total_buscas_vazias = n()) %>%
+                            pull(total_buscas_vazias)
+
+    total_de_buscas <- dados %>% 
+                        group_by(group) %>%
+                        summarise(total_buscas = n()) %>%
+                        pull(total_buscas)
+
+    taxa_buscas_sem_resultado <- (buscas_sem_resultado[1] / total_de_buscas[1]) 
+                                    - (buscas_sem_resultado[2] / total_de_buscas[2])
+    
+    return(taxa_buscas_sem_resultado)
+    
+}
+
+res.boot <- boot(data = amostra, 
+                 statistic = calcula_taxa_resultados, 
+                 R = 2000)
+plot(res.boot)
+
+calcula_ci(res.boot)
+```
+
+O intervalo de confiança, acima, nos mostra a diferença da taxa de resultados 0 entre os grupos *a* e *b* e nos permite inferir que a taxa para o grupo *a* é um pouco maior que a do outro grupo, porém a diferença não parece ser significativa, porque o intervalo é muito baixo.
 
 ## 5. Conclusões
 
-Nesta análise, procuramos responder às perguntas do exercício disponibilizados pelo Wikimedia, onde utilizamos, principalmente, de histogramas para verificar a distribuição dos dados. Para verificar relações utilizamos boxplots, que mostra também a distribuição de dados, porém de forma sumarizada e, por fim, gráficos de coluna, pareados ou sobrepostos, para facilitar a comparação entre 2 ou mais variáveis.
+Neste relatório, respondemos às mesmas perguntas do laboratório anterior, porém com técnicas de bootstrap, para inferir com mais confiança os resultados de todos os usuários da Wikimedia. Além disso, os resultados coincidiram com os já encontrados. 
 
 ## 6. Referências
 
 ¹ https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016
-
-
-
-
-
+² http://rpubs.com/veruskasantos/385180

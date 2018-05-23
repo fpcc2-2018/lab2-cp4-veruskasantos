@@ -1,0 +1,88 @@
+---
+title: "Testes de hipótese"
+author: "Veruska Santos"
+date: "22 de maio de 2018"
+output: html_document
+---
+
+Este relatório é uma versão editada da resposta do exercício proposto pelo Wikimedia, disponível no GitHub¹.
+
+## 1. Objetivo
+
+Neste relatório, analisaremos os dados de busca e navegação de projetos do Wikimedia e tentaremos responder as seguintes perguntas, separadamente:
+
+1. Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+2. Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+Como a Wikimedia disponibilizou apenas uma amostra dos dados, ou seja, um conjunto de buscas de alguns usuários, utilizaremos análises estatísticas para inferir resultados da população inteira, isto é, de todos os usuários da Wikimedia, a partir dos resultados obtidos da amostra disponibilizada.
+
+## 2. Hipóteses
+
+Para responder às perguntas definidas anteriormente, definiremos hipóteses, as quais tentaremos refutar ou confirmar através dos resultados obtidos com as reamostragens, como a permutação.
+
+Para a pergunta 1, criamos as seguintes hipóteses:
+
+* Hipótese Nula (HN1): Não há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
+* Hipótese Alternativa (HA1): Há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
+
+Para a pergunta 2:
+
+* Hipótese Nula (HN2): Não há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
+* Hipótese Alternativa (HA2): Há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
+
+## 3. Configurações
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(here)
+library(lubridate)
+library(boot)
+```
+
+```{r warning=FALSE}
+buscas = read_csv(here::here("data/search_data.csv"))
+```
+
+Adicionaremos uma nova variável **date** aos dados, que é a variável session_start_date sem a hora, para facilitar as análises e evitar repetição de código.
+
+```{r}
+buscas <- mutate(buscas, date = date(session_start_date))
+```
+
+## 4. Análise dos dados
+
+Agora, utilizaremos de visualizações e testes de hipótese para analisar os dados e responder às perguntas já descritas.
+
+### 4.1 Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+
+Para responder esta pergunta, iremos usar as variáveis **num_clicks**, **date** e **group** e calcularemos a taxa, que é a soma dos cliques do dia dividido pelo total de buscas do referido dia, ou seja, 
+
+**taxa de cliques** = soma dos cliques do dia / total de buscas do dia.
+
+Assim, iremos comparar a taxa de cliques diárias por grupo, ou seja, verificar se há ou não diferença na taxa entre os grupos. Para isso, iremos permutar os valores da variável $grupo$, para toda a amostra de buscas, a cada reamostragem.
+
+```{r}
+
+```
+
+#TODO: resultado, a diferença é significativa? Qual o p-valor?
+
+### 4.2 Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+Para responder esta pergunta, iremos usar as variáveis **results** e **group** e, então, analisar a frequência de buscas cujo resultado é zero em relação ao total de buscas.
+
+Assim, iremos comparar a taxa de resultados zero por grupo, ou seja, verificar se há ou não diferença, nessa taxa, entre os grupos. A cada reamostragem, também permutaremos os valores da variável $grupo$, para toda a amostra de buscas.
+
+```{r}
+
+```
+
+#TODO: resultado, a diferença é significativa? Qual o p-valor?
+
+## 5. Conclusões
+
+#TODO: comparar resultados com ICs
+
+## 6. Referências
+
+¹ https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016

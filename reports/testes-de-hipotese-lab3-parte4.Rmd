@@ -11,8 +11,8 @@ Este relatório é uma versão editada da resposta do exercício proposto pelo W
 
 Neste relatório, analisaremos os dados de busca e navegação de projetos do Wikimedia e tentaremos responder as seguintes perguntas, separadamente:
 
-1. Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
-2. Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+1. Como a taxa de cliques diária varia entre os grupos?
+2. Como a taxa de resultados zero varia entre os grupos?
 
 Como a Wikimedia disponibilizou apenas uma amostra dos dados, ou seja, um conjunto de buscas de alguns usuários, utilizaremos análises estatísticas para inferir resultados da população inteira, isto é, de todos os usuários da Wikimedia, a partir dos resultados obtidos da amostra disponibilizada.
 
@@ -20,15 +20,15 @@ Como a Wikimedia disponibilizou apenas uma amostra dos dados, ou seja, um conjun
 
 Para responder às perguntas definidas anteriormente, definiremos hipóteses, as quais tentaremos refutar ou confirmar através dos resultados obtidos com as reamostragens, como a permutação.
 
-Para a pergunta 1, criamos as seguintes hipóteses:
+Para cada pergunta, definimos as seguintes hipóteses:
 
-* Hipótese Nula (HN1): Não há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
-* Hipótese Alternativa (HA1): Há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
+Pergunta 1:
+* Hipótese Nula **(H_0-1)**: Não há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
+* Hipótese Alternativa **(H_1-1)**: Há diferença significativa na taxa de cliques diária entre o grupo $a$ e o grupo $b$.
 
-Para a pergunta 2:
-
-* Hipótese Nula (HN2): Não há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
-* Hipótese Alternativa (HA2): Há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
+Pergunta 2.:
+* Hipótese Nula **(H_0-2)**: Não há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
+* Hipótese Alternativa **(H_1-2)**: Há diferença significativa na taxa de resultados zero entre o grupo $a$ e o grupo $b$.
 
 ## 3. Configurações
 
@@ -36,7 +36,7 @@ Para a pergunta 2:
 library(tidyverse)
 library(here)
 library(lubridate)
-library(boot)
+library(resample)
 ```
 
 ```{r warning=FALSE}
@@ -53,31 +53,76 @@ buscas <- mutate(buscas, date = date(session_start_date))
 
 Agora, utilizaremos de visualizações e testes de hipótese para analisar os dados e responder às perguntas já descritas.
 
-### 4.1 Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+### 4.1 Como a taxa de cliques diária varia entre os grupos?
 
 Para responder esta pergunta, iremos usar as variáveis **num_clicks**, **date** e **group** e calcularemos a taxa, que é a soma dos cliques do dia dividido pelo total de buscas do referido dia, ou seja, 
 
 **taxa de cliques** = soma dos cliques do dia / total de buscas do dia.
 
+Calcularemos a média da taxa de cliques, definida acima, através de uma técnica de reamostragem, como a permutação, para tentar, então responder à pergunta.
+
 Assim, iremos comparar a taxa de cliques diárias por grupo, ou seja, verificar se há ou não diferença na taxa entre os grupos. Para isso, iremos permutar os valores da variável $grupo$, para toda a amostra de buscas, a cada reamostragem.
 
 ```{r}
+set.seed(1)
+amostra <- subset(buscas, select = c("session_id", "group", "num_clicks", "date"))
 
+calcula_taxa_cliques <- function(dados) {
+    taxa_cliques <- dados %>% 
+            group_by(date) %>%
+            summarise(clicks = sum(num_clicks), n = n(), taxa = (clicks/n)*100) %>%
+            pull(taxa)
+           
+        return(mean(taxa_cliques))
+}
+
+resultado <- permutationTest2(amostra,
+                 calcula_taxa_cliques(amostra),
+                 treatment = group)
+
+imprime <- function(resultado) {
+    print(paste("Valor observado: ", resultado$stats$Observed))
+    print(paste("Média: ", resultado$stats$Mean))
+    print(paste("P-valor: ", resultado$stats$PValue))
+}
+
+imprime(resultado)
 ```
 
-#TODO: resultado, a diferença é significativa? Qual o p-valor?
+Como o p-valor (0.0002) é muito baixo e o valor observado (19) está longe de 0, significa que rejeitamos a hipótese nula, pu seja, a probabilidade de que não haja diferença entre as taxas de cliques diárias entre os grupos é muito pequena. Porém a diferença entre os grupos não é tão significativa, porque a média da diferença entre as taxas (0.004) também é muito baixa.
 
-### 4.2 Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+### 4.2 Como a taxa de resultados zero varia entre os grupos?
 
 Para responder esta pergunta, iremos usar as variáveis **results** e **group** e, então, analisar a frequência de buscas cujo resultado é zero em relação ao total de buscas.
 
 Assim, iremos comparar a taxa de resultados zero por grupo, ou seja, verificar se há ou não diferença, nessa taxa, entre os grupos. A cada reamostragem, também permutaremos os valores da variável $grupo$, para toda a amostra de buscas.
 
 ```{r}
+set.seed(1)
+amostra <- subset(buscas, select = c("session_id", "group", "results"))
+
+calcula_taxa_resultados <- function(dados) {
+    buscas_sem_resultado <- dados %>%
+                            filter(results == 0) %>%
+                            summarise(total_buscas_vazias = n()) %>%
+                            pull(total_buscas_vazias)
+
+    total_de_buscas <- dados %>% 
+                        summarise(total_buscas = n()) %>%
+                        pull(total_buscas)
+    
+    return(buscas_sem_resultado / total_de_buscas)
+}
+
+resultado <- permutationTest2(amostra,
+                 calcula_taxa_resultados,
+                 treatment = group)
+
+imprime(resultado)
 
 ```
 
-#TODO: resultado, a diferença é significativa? Qual o p-valor?
+Como o p-valor (0.126) não é tão baixo e o valor observado (-0.002) está muito perto de 0, significa que aceitamos a hipótese nula, ou seja, há probabilidade de aproximadamente 12% de que não haja diferença entre as taxas de resultados zero entre os grupos. O que é evidenciado pela média da diferença entre as taxas dos grupos, que deu muito baixa.
 
 ## 5. Conclusões
 

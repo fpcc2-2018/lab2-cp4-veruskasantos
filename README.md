@@ -1,5 +1,7 @@
 Links das respostas no RPubs:
 
+`lab3-cp4`: http://rpubs.com/veruskasantos/testesdehipotese
+
 `lab3-cp1`: http://rpubs.com/veruskasantos/inferencia
 
 `lab2-cp4`: http://rpubs.com/veruskasantos/385180
